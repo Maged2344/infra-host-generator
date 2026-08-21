@@ -1,0 +1,22 @@
+components:
+  network:
+  - aadefraamb0002.infra.infra.nzero.dev
+  security:
+  - de-mgmt-fra11-1-panorama.infra.infra.nzero.dev
+  dns_ntp:
+    gridmasters:
+    - imdefraamb0001.infra.infra.nzero.dev
+    - imdefraamb0002.infra.infra.nzero.dev
+    resolvers:
+    - irdefraamb0001.infra.infra.nzero.dev
+    - irdefraamb0002.infra.infra.nzero.dev
+  jumphosts:
+  - demfra11-z2-b3.infra.infra.nzero.dev
+  - demfra11-z2-b4.infra.infra.nzero.dev
+  - demfra11-z2-b11.infra.infra.nzero.dev
+  - demfra11-z2-b12.infra.infra.nzero.dev
+  - demfra11-z2-b13.infra.infra.nzero.dev
+  compute:
+  - demfra11-z2-a3.infra.infra.nzero.dev
+  - demfra11-z2-a4.infra.infra.nzero.dev
+  - demfra11-z2-a5.infra.infra.nzero.dev
