@@ -1,62 +1,71 @@
 # FQDN-only reusable Jinja2 template
 components:
   network:
-    az1_mgmt:
-      - aadefraama0002.infra.infra.nzero.dev
-    az2_mgmt:
-      - aadefraamb0002.infra.infra.nzero.dev
-    az1_workloads:
-      - aadefraawa0002.infra.infra.nzero.dev
-    az2_workloads:
-      - aadefraawb0002.infra.infra.nzero.dev
+    de_mgmt_fra11-1:
+      - aadefraama0002.infra.nzero.dev
+    de_mgmt_fra11-2:
+      - aadefraamb0002.infra.nzero.dev
+    de_workloads_fra11-1:
+      - aadefraawa0002.infra.nzero.dev
+    de_workloads_fra11-2:
+      - aadefraawb0002.infra.nzero.dev
   security:
-    panorama:
-      - de-mgmt-fra11-1-panorama.infra.infra.nzero.dev
-      - de-mgmt-fra11-1-panorama.infra.infra.nzero.dev
+    de_mgmt_fra11-1:
+      - de-mgmt-fra11-1-panorama.infra.nzero.dev
+    de_mgmt_fra11-2:
+      - de-mgmt-fra11-1-panorama.infra.nzero.dev
   dns_ntp:
-    gridmasters:
-      - imdefraama0001.infra.infra.nzero.dev
-      - imdefraama0002.infra.infra.nzero.dev
-      - imdefraamb0001.infra.infra.nzero.dev
-      - imdefraamb0002.infra.infra.nzero.dev
-    resolvers:
-      - irdefraama0001.infra.infra.nzero.dev
-      - irdefraama0002.infra.infra.nzero.dev
-      - irdefraamb0001.infra.infra.nzero.dev
-      - irdefraamb0002.infra.infra.nzero.dev
-      - irdefraawa0001.infra.infra.nzero.dev
-      - irdefraawa0002.infra.infra.nzero.dev
-      - irdefraawb0001.infra.infra.nzero.dev
-      - irdefraawb0002.infra.infra.nzero.dev
+    de_mgmt_fra11-1:
+      gridmasters:
+        - imdefraama0001.infra.nzero.dev
+        - imdefraama0002.infra.nzero.dev
+      resolvers:
+        - irdefraama0001.infra.nzero.dev
+        - irdefraama0002.infra.nzero.dev
+    de_mgmt_fra11-2:
+      gridmasters:
+        - imdefraamb0001.infra.nzero.dev
+        - imdefraamb0002.infra.nzero.dev
+      resolvers:
+        - irdefraamb0001.infra.nzero.dev
+        - irdefraamb0002.infra.nzero.dev
+    de_workloads_fra11-1:
+      resolvers:
+        - irdefraawa0001.infra.nzero.dev
+        - irdefraawa0002.infra.nzero.dev
+    de_workloads_fra11-2:
+      resolvers:
+        - irdefraawb0001.infra.nzero.dev
+        - irdefraawb0002.infra.nzero.dev
   jumphosts:
-    az1:
-      - demfra11-z1-b3.infra.infra.nzero.dev
-      - demfra11-z1-b4.infra.infra.nzero.dev
-      - demfra11-z1-b11.infra.infra.nzero.dev
-      - demfra11-z1-b12.infra.infra.nzero.dev
-      - demfra11-z1-b13.infra.infra.nzero.dev
-    az2:
-      - demfra11-z2-b3.infra.infra.nzero.dev
-      - demfra11-z2-b4.infra.infra.nzero.dev
-      - demfra11-z2-b11.infra.infra.nzero.dev
-      - demfra11-z2-b12.infra.infra.nzero.dev
-      - demfra11-z2-b13.infra.infra.nzero.dev
+    de_mgmt_fra11-1:
+      - demfra11-z1-b3.infra.nzero.dev
+      - demfra11-z1-b4.infra.nzero.dev
+      - demfra11-z1-b11.infra.nzero.dev
+      - demfra11-z1-b12.infra.nzero.dev
+      - demfra11-z1-b13.infra.nzero.dev
+    de_mgmt_fra11-2:
+      - demfra11-z2-b3.infra.nzero.dev
+      - demfra11-z2-b4.infra.nzero.dev
+      - demfra11-z2-b11.infra.nzero.dev
+      - demfra11-z2-b12.infra.nzero.dev
+      - demfra11-z2-b13.infra.nzero.dev
   compute:
-    management_az1:
+    de_mgmt_fra11-1:
 
-      - demfra11-z1-a3.infra.infra.nzero.dev
+      - demfra11-z1-a3.infra.nzero.dev
 
-      - demfra11-z1-a4.infra.infra.nzero.dev
+      - demfra11-z1-a4.infra.nzero.dev
 
-      - demfra11-z1-a5.infra.infra.nzero.dev
+      - demfra11-z1-a5.infra.nzero.dev
 
-    management_az2:
+    de_mgmt_fra11-2:
 
-      - demfra11-z2-a3.infra.infra.nzero.dev
+      - demfra11-z2-a3.infra.nzero.dev
 
-      - demfra11-z2-a4.infra.infra.nzero.dev
+      - demfra11-z2-a4.infra.nzero.dev
 
-      - demfra11-z2-a5.infra.infra.nzero.dev
+      - demfra11-z2-a5.infra.nzero.dev
 
-    workloads_az1: []
-    workloads_az2: []
+    de_workloads_fra11-1: []
+    de_workloads_fra11-2: []

@@ -1,5 +1,5 @@
 environment: idev
-domain: infra.nzero.dev
+domain: nzero.dev
 co: de
 az1_mgmt_network_hostname: defraama
 az2_mgmt_network_hostname: defraamb

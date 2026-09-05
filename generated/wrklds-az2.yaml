@@ -1,8 +1,0 @@
-components:
-  network:
-  - aadefraawb0002.infra.infra.nzero.dev
-  dns_ntp:
-    resolvers:
-    - irdefraawb0001.infra.infra.nzero.dev
-    - irdefraawb0002.infra.infra.nzero.dev
-  compute: []

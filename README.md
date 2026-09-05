@@ -7,10 +7,10 @@
 - `split.py`: reusable AZ module.
 - `generate.py`: entry point.
 - `generated/infratest-components.yaml`: FQDN-only validation file.
-- `generated/mgmt-az1.yaml`
-- `generated/mgmt-az2.yaml`
-- `generated/wrklds-az1.yaml`
-- `generated/wrklds-az2.yaml`
+- `generated/de_mgmt_fra11-1.yaml`
+- `generated/de_mgmt_fra11-2.yaml`
+- `generated/de_workloads_fra11-1.yaml`
+- `generated/de_workloads_fra11-2.yaml`
 
 ## Project structure
 
@@ -66,3 +66,14 @@ Panorama uses the corrected format:
 `{co}-mgmt-{az1_m_region}-1-panorama.infra.{domain}`
 
 `{co}-mgmt-{az2_m_region}-1-panorama.infra.{domain}`
+
+## AZ naming convention
+
+AZs follow the vCenter naming convention: `{co}_{mgmt|workloads}_{region}-{N}`
+
+- `de_mgmt_fra11-1` — Infra Dev Mgmt AZ1
+- `de_mgmt_fra11-2` — Infra Dev Mgmt AZ2
+- `de_workloads_fra11-1` — Infra Dev Workloads AZ1
+- `de_workloads_fra11-2` — Infra Dev Workloads AZ2
+
+These names are used as keys in the template and as filenames in `generated/`.

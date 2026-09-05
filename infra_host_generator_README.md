@@ -27,10 +27,10 @@ infratest-components.yaml
     v
 AZ splitting
     |
-    +--> mgmt-az1.yaml
-    +--> mgmt-az2.yaml
-    +--> wrklds-az1.yaml
-    +--> wrklds-az2.yaml
+    +--> de_mgmt_fra11-1.yaml
+    +--> de_mgmt_fra11-2.yaml
+    +--> de_workloads_fra11-1.yaml
+    +--> de_workloads_fra11-2.yaml
 ```
 
 The current stage is intentionally focused on **FQDN validation**. The generated validation file contains FQDNs only so that hostname conventions can be checked against the infrastructure documentation before expanding the template to all other host metadata.
@@ -57,10 +57,10 @@ infra_host_generator/
 │
 └── generated/
     ├── infratest-components.yaml
-    ├── mgmt-az1.yaml
-    ├── mgmt-az2.yaml
-    ├── wrklds-az1.yaml
-    └── wrklds-az2.yaml
+    ├── de_mgmt_fra11-1.yaml
+    ├── de_mgmt_fra11-2.yaml
+    ├── de_workloads_fra11-1.yaml
+    └── de_workloads_fra11-2.yaml
 ```
 
 ---
@@ -85,7 +85,7 @@ environment.
 
 ```yaml
 environment: idev
-domain: infra.nzero.dev
+domain: nzero.dev
 co: de
 
 az1_mgmt_network_hostname: defraama
@@ -120,7 +120,7 @@ Defines the environment being generated.
 ### Domain
 
 ```yaml
-domain: infra.nzero.dev
+domain: nzero.dev
 ```
 
 Defines the DNS domain used when constructing FQDNs.
@@ -201,9 +201,9 @@ az1_m_compute_qty: 3
 generates:
 
 ```text
-demfra11-z1-a3.infra.infra.nzero.dev
-demfra11-z1-a4.infra.infra.nzero.dev
-demfra11-z1-a5.infra.infra.nzero.dev
+demfra11-z1-a3.infra.nzero.dev
+demfra11-z1-a4.infra.nzero.dev
+demfra11-z1-a5.infra.nzero.dev
 ```
 
 If the quantity is zero, no hosts are generated for that section.
@@ -230,13 +230,13 @@ with:
 
 ```yaml
 az1_mgmt_network_hostname: defraama
-domain: infra.nzero.dev
+domain: nzero.dev
 ```
 
 generates:
 
 ```text
-aadefraama0002.infra.infra.nzero.dev
+aadefraama0002.infra.nzero.dev
 ```
 
 The important point is that the template uses:
@@ -269,7 +269,7 @@ aa{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
 produces:
 
 ```text
-aadefraama0002.infra.infra.nzero.dev
+aadefraama0002.infra.nzero.dev
 ```
 
 The same pattern is used for the other Availability Zones with their corresponding site variables.
@@ -307,7 +307,7 @@ and:
 For the current Infra Dev values this results in:
 
 ```text
-de-mgmt-fra11-1-panorama.infra.infra.nzero.dev
+de-mgmt-fra11-1-panorama.infra.nzero.dev
 ```
 
 The Panorama naming convention is intentionally separate from the network hostname variables.
@@ -331,7 +331,7 @@ im{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
 generates:
 
 ```text
-imdefraama0001.infra.infra.nzero.dev
+imdefraama0001.infra.nzero.dev
 ```
 
 and:
@@ -343,7 +343,7 @@ ir{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
 generates:
 
 ```text
-irdefraama0001.infra.infra.nzero.dev
+irdefraama0001.infra.nzero.dev
 ```
 
 The same approach is used for AZ2 management and both workloads networks.
@@ -357,21 +357,21 @@ The template generates the management jumphost FQDNs for AZ1 and AZ2.
 Examples for AZ1:
 
 ```text
-demfra11-z1-b3.infra.infra.nzero.dev
-demfra11-z1-b4.infra.infra.nzero.dev
-demfra11-z1-b11.infra.infra.nzero.dev
-demfra11-z1-b12.infra.infra.nzero.dev
-demfra11-z1-b13.infra.infra.nzero.dev
+demfra11-z1-b3.infra.nzero.dev
+demfra11-z1-b4.infra.nzero.dev
+demfra11-z1-b11.infra.nzero.dev
+demfra11-z1-b12.infra.nzero.dev
+demfra11-z1-b13.infra.nzero.dev
 ```
 
 Examples for AZ2:
 
 ```text
-demfra11-z2-b3.infra.infra.nzero.dev
-demfra11-z2-b4.infra.infra.nzero.dev
-demfra11-z2-b11.infra.infra.nzero.dev
-demfra11-z2-b12.infra.infra.nzero.dev
-demfra11-z2-b13.infra.infra.nzero.dev
+demfra11-z2-b3.infra.nzero.dev
+demfra11-z2-b4.infra.nzero.dev
+demfra11-z2-b11.infra.nzero.dev
+demfra11-z2-b12.infra.nzero.dev
+demfra11-z2-b13.infra.nzero.dev
 ```
 
 These values are generated from the corresponding region variables.
@@ -399,9 +399,9 @@ az1_m_compute_qty: 3
 the result is:
 
 ```text
-demfra11-z1-a3.infra.infra.nzero.dev
-demfra11-z1-a4.infra.infra.nzero.dev
-demfra11-z1-a5.infra.infra.nzero.dev
+demfra11-z1-a3.infra.nzero.dev
+demfra11-z1-a4.infra.nzero.dev
+demfra11-z1-a5.infra.nzero.dev
 ```
 
 This makes the number of generated hosts configurable without changing the template.
@@ -531,10 +531,10 @@ generated/infratest-components.yaml
 and split the relevant FQDNs into:
 
 ```text
-mgmt-az1.yaml
-mgmt-az2.yaml
-wrklds-az1.yaml
-wrklds-az2.yaml
+de_mgmt_fra11-1.yaml
+de_mgmt_fra11-2.yaml
+de_workloads_fra11-1.yaml
+de_workloads_fra11-2.yaml
 ```
 
 The important architectural decision is that the splitting logic is separate from the Jinja2 rendering logic.
@@ -625,13 +625,13 @@ Example:
 ```yaml
 components:
   network:
-    az1_mgmt:
-      - aadefraama0002.infra.infra.nzero.dev
+    de_mgmt_fra11-1:
+      - aadefraama0002.infra.nzero.dev
 ```
 
 ---
 
-# 15. `generated/mgmt-az1.yaml`
+# 15. `generated/de_mgmt_fra11-1.yaml`
 
 This file contains the generated FQDNs belonging to:
 
@@ -654,7 +654,7 @@ The file is useful when someone only needs the AZ1 management infrastructure.
 
 ---
 
-# 16. `generated/mgmt-az2.yaml`
+# 16. `generated/de_mgmt_fra11-2.yaml`
 
 This file contains the generated FQDNs belonging to:
 
@@ -662,7 +662,7 @@ This file contains the generated FQDNs belonging to:
 Management AZ2
 ```
 
-It follows the same concept as `mgmt-az1.yaml`.
+It follows the same concept as `de_mgmt_fra11-1.yaml`.
 
 Expected categories include:
 
@@ -677,7 +677,7 @@ Storage
 
 ---
 
-# 17. `generated/wrklds-az1.yaml`
+# 17. `generated/de_workloads_fra11-1.yaml`
 
 This file contains the FQDNs belonging to:
 
@@ -704,7 +704,7 @@ there are currently no workload compute FQDNs generated for this section.
 
 ---
 
-# 18. `generated/wrklds-az2.yaml`
+# 18. `generated/de_workloads_fra11-2.yaml`
 
 This file contains the FQDNs belonging to:
 
@@ -760,12 +760,12 @@ The complete architecture is:
        +---------------+---------------+
        |               |               |
        v               v               v
- mgmt-az1.yaml   mgmt-az2.yaml   workload files
+ de_mgmt_fra11-1.yaml   de_mgmt_fra11-2.yaml   workload files
                                        |
                               +--------+--------+
                               |                 |
                               v                 v
-                       wrklds-az1.yaml   wrklds-az2.yaml
+                       de_workloads_fra11-1.yaml   de_workloads_fra11-2.yaml
 ```
 
 ---
@@ -1036,13 +1036,13 @@ For the current values:
 co: de
 az1_m_region: fra11
 az2_m_region: fra11
-domain: infra.nzero.dev
+domain: nzero.dev
 ```
 
 the generated FQDN is:
 
 ```text
-de-mgmt-fra11-1-panorama.infra.infra.nzero.dev
+de-mgmt-fra11-1-panorama.infra.nzero.dev
 ```
 
 The template should not attempt to build Panorama names from:
@@ -1199,7 +1199,7 @@ The current Infra Dev example uses:
 
 ```yaml
 environment: idev
-domain: infra.nzero.dev
+domain: nzero.dev
 co: de
 
 az1_mgmt_network_hostname: defraama
