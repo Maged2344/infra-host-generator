@@ -1,6 +1,8 @@
 environment: idev
 domain: nzero.dev
 co: de
+product: Infra
+env_name: Dev
 az1_mgmt_network_hostname: defraama
 az2_mgmt_network_hostname: defraamb
 az1_workloads_network_hostname: defraawa

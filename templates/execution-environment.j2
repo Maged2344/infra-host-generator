@@ -1,63 +1,63 @@
 # FQDN-only reusable Jinja2 template
 components:
   network:
-    {{ co }}_mgmt_{{ az1_m_region }}-1:
+    {{ product }} {{ env_name }} Mgmt AZ1:
       - aa{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_mgmt_{{ az2_m_region }}-2:
+    {{ product }} {{ env_name }} Mgmt AZ2:
       - aa{{ az2_mgmt_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_workloads_{{ az1_w_region }}-1:
+    {{ product }} {{ env_name }} Workloads AZ1:
       - aa{{ az1_workloads_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_workloads_{{ az2_w_region }}-2:
+    {{ product }} {{ env_name }} Workloads AZ2:
       - aa{{ az2_workloads_network_hostname }}0002.infra.{{ domain }}
   security:
-    {{ co }}_mgmt_{{ az1_m_region }}-1:
+    {{ product }} {{ env_name }} Mgmt AZ1:
       - {{ co }}-mgmt-{{ az1_m_region }}-1-panorama.infra.{{ domain }}
-    {{ co }}_mgmt_{{ az2_m_region }}-2:
+    {{ product }} {{ env_name }} Mgmt AZ2:
       - {{ co }}-mgmt-{{ az2_m_region }}-1-panorama.infra.{{ domain }}
   dns_ntp:
-    {{ co }}_mgmt_{{ az1_m_region }}-1:
+    {{ product }} {{ env_name }} Mgmt AZ1:
       gridmasters:
         - im{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
         - im{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
       resolvers:
         - ir{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
         - ir{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_mgmt_{{ az2_m_region }}-2:
+    {{ product }} {{ env_name }} Mgmt AZ2:
       gridmasters:
         - im{{ az2_mgmt_network_hostname }}0001.infra.{{ domain }}
         - im{{ az2_mgmt_network_hostname }}0002.infra.{{ domain }}
       resolvers:
         - ir{{ az2_mgmt_network_hostname }}0001.infra.{{ domain }}
         - ir{{ az2_mgmt_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_workloads_{{ az1_w_region }}-1:
+    {{ product }} {{ env_name }} Workloads AZ1:
       resolvers:
         - ir{{ az1_workloads_network_hostname }}0001.infra.{{ domain }}
         - ir{{ az1_workloads_network_hostname }}0002.infra.{{ domain }}
-    {{ co }}_workloads_{{ az2_w_region }}-2:
+    {{ product }} {{ env_name }} Workloads AZ2:
       resolvers:
         - ir{{ az2_workloads_network_hostname }}0001.infra.{{ domain }}
         - ir{{ az2_workloads_network_hostname }}0002.infra.{{ domain }}
   jumphosts:
-    {{ co }}_mgmt_{{ az1_m_region }}-1:
+    {{ product }} {{ env_name }} Mgmt AZ1:
       - {{ co }}m{{ az1_m_region }}-z1-b3.infra.{{ domain }}
       - {{ co }}m{{ az1_m_region }}-z1-b4.infra.{{ domain }}
       - {{ co }}m{{ az1_m_region }}-z1-b11.infra.{{ domain }}
       - {{ co }}m{{ az1_m_region }}-z1-b12.infra.{{ domain }}
       - {{ co }}m{{ az1_m_region }}-z1-b13.infra.{{ domain }}
-    {{ co }}_mgmt_{{ az2_m_region }}-2:
+    {{ product }} {{ env_name }} Mgmt AZ2:
       - {{ co }}m{{ az2_m_region }}-z2-b3.infra.{{ domain }}
       - {{ co }}m{{ az2_m_region }}-z2-b4.infra.{{ domain }}
       - {{ co }}m{{ az2_m_region }}-z2-b11.infra.{{ domain }}
       - {{ co }}m{{ az2_m_region }}-z2-b12.infra.{{ domain }}
       - {{ co }}m{{ az2_m_region }}-z2-b13.infra.{{ domain }}
   compute:
-    {{ co }}_mgmt_{{ az1_m_region }}-1:
+    {{ product }} {{ env_name }} Mgmt AZ1:
 {% for i in range(3, 3 + az1_m_compute_qty) %}
       - {{ co }}m{{ az1_m_region }}-z1-a{{ i }}.infra.{{ domain }}
 {% endfor %}
-    {{ co }}_mgmt_{{ az2_m_region }}-2:
+    {{ product }} {{ env_name }} Mgmt AZ2:
 {% for i in range(3, 3 + az2_m_compute_qty) %}
       - {{ co }}m{{ az2_m_region }}-z2-a{{ i }}.infra.{{ domain }}
 {% endfor %}
-    {{ co }}_workloads_{{ az1_w_region }}-1: []
-    {{ co }}_workloads_{{ az2_w_region }}-2: []
+    {{ product }} {{ env_name }} Workloads AZ1: []
+    {{ product }} {{ env_name }} Workloads AZ2: []
