@@ -167,9 +167,15 @@ from the network hostname — it uses the `region` field directly.
 
 ## Validation
 
-`render.py` validates that required root-level fields are present in the site
-YAML before rendering: `environment`, `domain`, `co`, `product`, `env_name`,
-`networks`. A `ValueError` is raised if any are missing.
+`render.py` validates required fields at three levels before rendering.
+A `ValueError` is raised if any are missing.
+
+- **Root-level**: `environment`, `domain`, `co`, `product`, `env_name`, `networks`
+- **Network-level** (each `networks` entry): `type`, `label`, `host_prefix`, `azs`
+- **AZ-level** (each `azs` entry): `number`, `network_hostname`, `region`
+
+Optional fields (`compute_qty`, `jumphost_ids`) are not validated — the
+template handles their absence safely.
 
 ## AZ naming convention
 

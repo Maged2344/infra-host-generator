@@ -160,8 +160,9 @@ Storage is **out of current scope**. No storage schema has been invented.
 
 ## render.py Validation
 
-`render.py` now validates that required root-level fields are present in the
-site YAML before rendering:
+`render.py` validates required fields at three levels before rendering:
+
+**Root-level:**
 
 - `environment`
 - `domain`
@@ -170,13 +171,30 @@ site YAML before rendering:
 - `env_name`
 - `networks`
 
+**Network-level (each entry in `networks`):**
+
+- `type`
+- `label`
+- `host_prefix`
+- `azs`
+
+**AZ-level (each entry in `net.azs`):**
+
+- `number`
+- `network_hostname`
+- `region`
+
+Optional fields (`compute_qty`, `jumphost_ids`) are not validated — the
+template handles their absence safely.
+
 A `ValueError` is raised if any are missing. No hostname-generation logic has
 been moved into Python.
 
 ## Validation Results
 
-- **FQDN count**: 33 (identical to pre-refactor output)
-- **FQDN match**: All 33 FQDNs identical
+- **FQDN entries**: 34 total generated entries (identical to pre-refactor output)
+- **Unique FQDNs**: 33 (the Panorama FQDN appears twice — once per management AZ — because both AZs share `region: fra11`)
+- **FQDN match**: All entries identical to pre-refactor output
 - **YAML validity**: All generated files valid
 - **Split files**: All AZ-specific files correct
 - `generate.py` and `split.py` work unchanged
