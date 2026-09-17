@@ -11,7 +11,12 @@ REQUIRED_NETWORK_FIELDS = ("type", "label", "host_prefix", "azs")
 REQUIRED_AZ_FIELDS = ("number", "network_hostname", "region")
 
 def load_site(path):
-    return yaml.safe_load(Path(path).read_text())
+    site = yaml.safe_load(Path(path).read_text())
+    if not isinstance(site, dict):
+        raise ValueError(
+            f"Site configuration {path} must contain a YAML mapping/object"
+        )
+    return site
 
 def _validate_networks(site, site_path):
     if not isinstance(site["networks"], list):

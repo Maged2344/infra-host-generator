@@ -962,5 +962,43 @@ class TestStorageVerification(unittest.TestCase):
         self.assertNotIn("storage", result.stdout.lower())
 
 
+class TestLoadSiteRootType(unittest.TestCase):
+    """Test: load_site() rejects non-mapping YAML roots with ValueError."""
+
+    def _test_yaml_content(self, content):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(content)
+            path = f.name
+        try:
+            load_site(path)
+        except ValueError:
+            pass
+        except Exception as e:
+            self.fail(f"Expected ValueError, got {type(e).__name__}: {e}")
+        else:
+            self.fail("Expected ValueError, but no exception was raised")
+        finally:
+            os.unlink(f.name)
+
+    def test_empty_yaml(self):
+        self._test_yaml_content("")
+
+    def test_scalar_yaml(self):
+        self._test_yaml_content("hello")
+
+    def test_list_yaml(self):
+        self._test_yaml_content("- item1\n- item2")
+
+    def test_valid_mapping_accepted(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write("environment: idev\ndomain: nzero.dev")
+            path = f.name
+        try:
+            result = load_site(path)
+            self.assertIsInstance(result, dict)
+        finally:
+            os.unlink(f.name)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
