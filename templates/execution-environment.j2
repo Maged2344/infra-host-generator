@@ -7,6 +7,7 @@ components:
       - aa{{ az.network_hostname }}0002.infra.{{ domain }}
 {% endfor %}
 {% endfor %}
+{% if networks | selectattr('type', 'equalto', 'management') | list %}
   security:
 {% for net in networks if net.type == 'management' %}
 {% for az in net.azs %}
@@ -14,6 +15,7 @@ components:
       - {{ co }}-mgmt-{{ az.region }}-1-panorama.infra.{{ domain }}
 {% endfor %}
 {% endfor %}
+{% endif %}
   dns_ntp:
 {% for net in networks %}
 {% for az in net.azs %}
@@ -28,6 +30,11 @@ components:
         - ir{{ az.network_hostname }}0002.infra.{{ domain }}
 {% endfor %}
 {% endfor %}
+{% set ns = namespace(has_jumphosts=false) %}
+{% for net in networks if net.type == 'management' %}
+{% if net.jumphost_ids is defined and net.jumphost_ids %}{% set ns.has_jumphosts = true %}{% endif %}
+{% endfor %}
+{% if ns.has_jumphosts %}
   jumphosts:
 {% for net in networks if net.type == 'management' %}
 {% for az in net.azs %}
@@ -39,6 +46,7 @@ components:
 {% endif %}
 {% endfor %}
 {% endfor %}
+{% endif %}
   compute:
 {% for net in networks %}
 {% for az in net.azs %}

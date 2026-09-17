@@ -50,8 +50,12 @@ The main output is `generated/infratest-components.yaml`.
 The site YAML uses a generic, data-driven `networks` list. Each network entry
 defines a network type (management, workloads) and its availability zones.
 
-Adding an AZ or a new network type requires **only** a YAML change — the
-Jinja2 template iterates over whatever is defined.
+Adding an AZ to an existing supported network type requires **only** a YAML
+change — the Jinja2 template iterates over whatever is defined.
+
+A new network **type** (e.g. `dmz`) would require adding its naming rules to
+the template, because the template must know the hostname convention for each
+type.
 
 ```yaml
 environment: idev
@@ -96,7 +100,7 @@ networks:
 | `type` | `management` or `workloads`; drives which sections are generated (Panorama, jumphosts, gridmasters are management-only) |
 | `label` | Used in generated YAML keys (e.g. `Infra Dev Mgmt AZ1`) |
 | `host_prefix` | The `m`/`w` letter in compute/jumphost FQDNs |
-| `jumphost_ids` | List of jumphost ID numbers; data-driven instead of hardcoded (management only) |
+| `jumphost_ids` | List of jumphost ID numbers (management only); if missing or empty, `jumphosts` section is omitted |
 
 ### AZ-level fields
 
@@ -105,7 +109,21 @@ networks:
 | `number` | AZ number; drives `z{N}` suffix and `AZ{N}` label |
 | `network_hostname` | Complete hostname component (e.g. `defraama`) — must not be shortened |
 | `region` | Region string (e.g. `fra11`) |
-| `compute_qty` | Number of compute hosts to generate; `0` produces `[]` |
+| `compute_qty` | Number of compute hosts to generate; `0` or missing produces `[]` |
+
+### Optional data handling
+
+If an optional field is missing, the template does not generate invalid FQDNs:
+
+- Missing `jumphost_ids` → `jumphosts` section omitted entirely
+- Missing `compute_qty` → treated as `0`, produces `[]`
+- No management networks → `security` and `jumphosts` sections omitted
+
+## Storage
+
+Storage/NetApp FQDNs are mentioned in `infra_host_generator_README.md` as a
+planned future section but were never implemented in the template. Storage is
+**out of current scope**.
 
 ## Adding another site
 
@@ -146,6 +164,12 @@ Panorama uses the corrected format:
 
 Generated for each management AZ via a Jinja2 loop. Panorama is **not** derived
 from the network hostname — it uses the `region` field directly.
+
+## Validation
+
+`render.py` validates that required root-level fields are present in the site
+YAML before rendering: `environment`, `domain`, `co`, `product`, `env_name`,
+`networks`. A `ValueError` is raised if any are missing.
 
 ## AZ naming convention
 
