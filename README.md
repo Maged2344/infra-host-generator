@@ -45,10 +45,72 @@ python generate.py --site sites/infra-dev.yaml
 
 The main output is `generated/infratest-components.yaml`.
 
+## Site YAML structure
+
+The site YAML uses a generic, data-driven `networks` list. Each network entry
+defines a network type (management, workloads) and its availability zones.
+
+Adding an AZ or a new network type requires **only** a YAML change — the
+Jinja2 template iterates over whatever is defined.
+
+```yaml
+environment: idev
+domain: nzero.dev
+co: de
+product: Infra
+env_name: Dev
+
+networks:
+  - type: management
+    label: Mgmt
+    host_prefix: m
+    jumphost_ids: [3, 4, 11, 12, 13]
+    azs:
+      - number: 1
+        network_hostname: defraama
+        region: fra11
+        compute_qty: 3
+      - number: 2
+        network_hostname: defraamb
+        region: fra11
+        compute_qty: 3
+
+  - type: workloads
+    label: Workloads
+    host_prefix: w
+    azs:
+      - number: 1
+        network_hostname: defraawa
+        region: fra11
+        compute_qty: 0
+      - number: 2
+        network_hostname: defraawb
+        region: fra11
+        compute_qty: 0
+```
+
+### Network-level fields
+
+| Field | Purpose |
+|-------|---------|
+| `type` | `management` or `workloads`; drives which sections are generated (Panorama, jumphosts, gridmasters are management-only) |
+| `label` | Used in generated YAML keys (e.g. `Infra Dev Mgmt AZ1`) |
+| `host_prefix` | The `m`/`w` letter in compute/jumphost FQDNs |
+| `jumphost_ids` | List of jumphost ID numbers; data-driven instead of hardcoded (management only) |
+
+### AZ-level fields
+
+| Field | Purpose |
+|-------|---------|
+| `number` | AZ number; drives `z{N}` suffix and `AZ{N}` label |
+| `network_hostname` | Complete hostname component (e.g. `defraama`) — must not be shortened |
+| `region` | Region string (e.g. `fra11`) |
+| `compute_qty` | Number of compute hosts to generate; `0` produces `[]` |
+
 ## Adding another site
 
 1. Create a new YAML file under `sites/` (for example `sites/infra-prod.yaml`).
-2. Copy the variable structure from `sites/infra-dev.yaml` and fill in the
+2. Copy the `networks` structure from `sites/infra-dev.yaml` and fill in the
    values for the new site.
 3. Run the generator with the new site file:
 
@@ -59,13 +121,31 @@ python generate.py --site sites/infra-prod.yaml
 The same Jinja2 template (`templates/execution-environment.j2`) is reused for
 every site.  Only the site YAML file changes.
 
+## Adding an AZ
+
+Add a new entry to the `azs` list under the relevant network in the site YAML.
+No template change is needed — the Jinja2 loops iterate over all AZs.
+
+```yaml
+    azs:
+      - number: 1
+        ...
+      - number: 2
+        ...
+      - number: 3                # new AZ — automatically picked up
+        network_hostname: defraamc
+        region: fra11
+        compute_qty: 2
+```
+
 ## Panorama naming convention
 
 Panorama uses the corrected format:
 
-`{co}-mgmt-{az1_m_region}-1-panorama.infra.{domain}`
+`{co}-mgmt-{region}-1-panorama.infra.{domain}`
 
-`{co}-mgmt-{az2_m_region}-1-panorama.infra.{domain}`
+Generated for each management AZ via a Jinja2 loop. Panorama is **not** derived
+from the network hostname — it uses the `region` field directly.
 
 ## AZ naming convention
 

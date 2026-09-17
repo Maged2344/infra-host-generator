@@ -3,15 +3,31 @@ domain: nzero.dev
 co: de
 product: Infra
 env_name: Dev
-az1_mgmt_network_hostname: defraama
-az2_mgmt_network_hostname: defraamb
-az1_workloads_network_hostname: defraawa
-az2_workloads_network_hostname: defraawb
-az1_m_region: fra11
-az2_m_region: fra11
-az1_w_region: fra11
-az2_w_region: fra11
-az1_m_compute_qty: 3
-az2_m_compute_qty: 3
-az1_w_compute_qty: 0
-az2_w_compute_qty: 0
+
+networks:
+  - type: management
+    label: Mgmt
+    host_prefix: m
+    jumphost_ids: [3, 4, 11, 12, 13]
+    azs:
+      - number: 1
+        network_hostname: defraama
+        region: fra11
+        compute_qty: 3
+      - number: 2
+        network_hostname: defraamb
+        region: fra11
+        compute_qty: 3
+
+  - type: workloads
+    label: Workloads
+    host_prefix: w
+    azs:
+      - number: 1
+        network_hostname: defraawa
+        region: fra11
+        compute_qty: 0
+      - number: 2
+        network_hostname: defraawb
+        region: fra11
+        compute_qty: 0

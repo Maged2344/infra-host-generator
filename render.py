@@ -9,5 +9,9 @@ def load_site(path):
 
 def render(site_path):
     site = load_site(site_path)
-    env = Environment(loader=FileSystemLoader(BASE / "templates"))
+    env = Environment(
+        loader=FileSystemLoader(BASE / "templates"),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
     return env.get_template("execution-environment.j2").render(**site)

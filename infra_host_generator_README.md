@@ -87,24 +87,36 @@ environment.
 environment: idev
 domain: nzero.dev
 co: de
+product: Infra
+env_name: Dev
 
-az1_mgmt_network_hostname: defraama
-az2_mgmt_network_hostname: defraamb
+networks:
+  - type: management
+    label: Mgmt
+    host_prefix: m
+    jumphost_ids: [3, 4, 11, 12, 13]
+    azs:
+      - number: 1
+        network_hostname: defraama
+        region: fra11
+        compute_qty: 3
+      - number: 2
+        network_hostname: defraamb
+        region: fra11
+        compute_qty: 3
 
-az1_workloads_network_hostname: defraawa
-az2_workloads_network_hostname: defraawb
-
-az1_m_region: fra11
-az2_m_region: fra11
-
-az1_w_region: fra11
-az2_w_region: fra11
-
-az1_m_compute_qty: 3
-az2_m_compute_qty: 3
-
-az1_w_compute_qty: 0
-az2_w_compute_qty: 0
+  - type: workloads
+    label: Workloads
+    host_prefix: w
+    azs:
+      - number: 1
+        network_hostname: defraawa
+        region: fra11
+        compute_qty: 0
+      - number: 2
+        network_hostname: defraawb
+        region: fra11
+        compute_qty: 0
 ```
 
 ## Meaning of the main variables
@@ -133,11 +145,22 @@ co: de
 
 Used by hostname conventions that require the `co` value.
 
+### Networks structure
+
+The site YAML uses a generic `networks` list. Each entry defines a network
+type and its availability zones. The Jinja2 template iterates over this
+list, so adding an AZ or a network type requires only a YAML change.
+
 ### Management network hostname prefixes
 
 ```yaml
-az1_mgmt_network_hostname: defraama
-az2_mgmt_network_hostname: defraamb
+networks:
+  - type: management
+    azs:
+      - number: 1
+        network_hostname: defraama
+      - number: 2
+        network_hostname: defraamb
 ```
 
 These are the complete network hostname values.
@@ -163,8 +186,13 @@ The missing `ma` changes the resulting hostnames.
 ### Workloads network hostname prefixes
 
 ```yaml
-az1_workloads_network_hostname: defraawa
-az2_workloads_network_hostname: defraawb
+networks:
+  - type: workloads
+    azs:
+      - number: 1
+        network_hostname: defraawa
+      - number: 2
+        network_hostname: defraawb
 ```
 
 These are also complete values and should be used exactly as provided.
@@ -172,11 +200,11 @@ These are also complete values and should be used exactly as provided.
 ### Regions
 
 ```yaml
-az1_m_region: fra11
-az2_m_region: fra11
-
-az1_w_region: fra11
-az2_w_region: fra11
+azs:
+  - number: 1
+    region: fra11
+  - number: 2
+    region: fra11
 ```
 
 These are used by hostname conventions that include the region.
@@ -184,10 +212,11 @@ These are used by hostname conventions that include the region.
 ### Compute quantities
 
 ```yaml
-az1_m_compute_qty: 3
-az2_m_compute_qty: 3
-az1_w_compute_qty: 0
-az2_w_compute_qty: 0
+azs:
+  - number: 1
+    compute_qty: 3
+  - number: 2
+    compute_qty: 0
 ```
 
 These control how many compute FQDNs are generated for each section.
@@ -195,7 +224,7 @@ These control how many compute FQDNs are generated for each section.
 For example:
 
 ```yaml
-az1_m_compute_qty: 3
+compute_qty: 3
 ```
 
 generates:
@@ -206,7 +235,7 @@ demfra11-z1-a4.infra.nzero.dev
 demfra11-z1-a5.infra.nzero.dev
 ```
 
-If the quantity is zero, no hosts are generated for that section.
+If the quantity is zero, no hosts are generated for that section (`[]`).
 
 ---
 
@@ -223,13 +252,13 @@ The template receives values from a site YAML file (e.g. `sites/infra-dev.yaml`)
 For example:
 
 ```jinja2
-aa{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
+aa{{ az.network_hostname }}0002.infra.{{ domain }}
 ```
 
 with:
 
 ```yaml
-az1_mgmt_network_hostname: defraama
+network_hostname: defraama
 domain: nzero.dev
 ```
 
@@ -263,7 +292,7 @@ AZ2 Workloads
 Example:
 
 ```jinja2
-aa{{ az1_mgmt_network_hostname }}0002.infra.{{ domain }}
+aa{{ az.network_hostname }}0002.infra.{{ domain }}
 ```
 
 produces:
@@ -272,7 +301,8 @@ produces:
 aadefraama0002.infra.nzero.dev
 ```
 
-The same pattern is used for the other Availability Zones with their corresponding site variables.
+The same pattern is applied via loops for all Availability Zones and network
+types defined in the site YAML.
 
 ---
 
@@ -283,26 +313,16 @@ The Panorama appliances use a specific naming convention.
 The corrected format is:
 
 ```text
-{co}-mgmt-{az1_m_region}-1-panorama.infra.{domain}
-```
-
-and:
-
-```text
-{co}-mgmt-{az2_m_region}-1-panorama.infra.{domain}
+{co}-mgmt-{region}-1-panorama.infra.{domain}
 ```
 
 The Jinja2 template therefore uses:
 
 ```jinja2
-{{ co }}-mgmt-{{ az1_m_region }}-1-panorama.infra.{{ domain }}
+{{ co }}-mgmt-{{ az.region }}-1-panorama.infra.{{ domain }}
 ```
 
-and:
-
-```jinja2
-{{ co }}-mgmt-{{ az2_m_region }}-1-panorama.infra.{{ domain }}
-```
+This is generated for each management AZ via a loop.
 
 For the current Infra Dev values this results in:
 
@@ -325,7 +345,7 @@ The template generates FQDNs for:
 Examples:
 
 ```jinja2
-im{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
+im{{ az.network_hostname }}0001.infra.{{ domain }}
 ```
 
 generates:
@@ -337,7 +357,7 @@ imdefraama0001.infra.nzero.dev
 and:
 
 ```jinja2
-ir{{ az1_mgmt_network_hostname }}0001.infra.{{ domain }}
+ir{{ az.network_hostname }}0001.infra.{{ domain }}
 ```
 
 generates:
@@ -346,7 +366,9 @@ generates:
 irdefraama0001.infra.nzero.dev
 ```
 
-The same approach is used for AZ2 management and both workloads networks.
+The same approach is used for all management and workloads AZs via loops.
+Gridmasters are generated for management AZs only; workloads AZs get
+resolvers only.
 
 ---
 
@@ -385,15 +407,15 @@ The template supports generating compute host FQDNs using Jinja2 loops.
 Example:
 
 ```jinja2
-{% for i in range(3, 3 + az1_m_compute_qty) %}
-  - {{ co }}m{{ az1_m_region }}-z1-a{{ i }}.infra.{{ domain }}
+{% for i in range(3, 3 + az.compute_qty) %}
+  - {{ co }}{{ net.host_prefix }}{{ az.region }}-z{{ az.number }}-a{{ i }}.infra.{{ domain }}
 {% endfor %}
 ```
 
 With:
 
 ```yaml
-az1_m_compute_qty: 3
+compute_qty: 3
 ```
 
 the result is:
@@ -697,7 +719,7 @@ Storage
 For the current Infra Dev configuration:
 
 ```yaml
-az1_w_compute_qty: 0
+compute_qty: 0
 ```
 
 there are currently no workload compute FQDNs generated for this section.
@@ -724,7 +746,7 @@ Storage
 For the current Infra Dev configuration:
 
 ```yaml
-az2_w_compute_qty: 0
+compute_qty: 0
 ```
 
 there are currently no workload compute FQDNs generated for this section.
@@ -832,24 +854,36 @@ For example:
 environment: production
 domain: infra.example.com
 co: xx
+product: Infra
+env_name: Prod
 
-az1_mgmt_network_hostname: ...
-az2_mgmt_network_hostname: ...
+networks:
+  - type: management
+    label: Mgmt
+    host_prefix: m
+    jumphost_ids: [3, 4, 11, 12, 13]
+    azs:
+      - number: 1
+        network_hostname: ...
+        region: ...
+        compute_qty: ...
+      - number: 2
+        network_hostname: ...
+        region: ...
+        compute_qty: ...
 
-az1_workloads_network_hostname: ...
-az2_workloads_network_hostname: ...
-
-az1_m_region: ...
-az2_m_region: ...
-
-az1_w_region: ...
-az2_w_region: ...
-
-az1_m_compute_qty: ...
-az2_m_compute_qty: ...
-
-az1_w_compute_qty: ...
-az2_w_compute_qty: ...
+  - type: workloads
+    label: Workloads
+    host_prefix: w
+    azs:
+      - number: 1
+        network_hostname: ...
+        region: ...
+        compute_qty: ...
+      - number: 2
+        network_hostname: ...
+        region: ...
+        compute_qty: ...
 ```
 
 Then run the generator with the new site file:
@@ -984,10 +1018,15 @@ These can be added later after the hostname conventions are validated.
 The following values are especially important:
 
 ```yaml
-az1_mgmt_network_hostname: defraama
-az2_mgmt_network_hostname: defraamb
-az1_workloads_network_hostname: defraawa
-az2_workloads_network_hostname: defraawb
+networks:
+  - type: management
+    azs:
+      - network_hostname: defraama
+      - network_hostname: defraamb
+  - type: workloads
+    azs:
+      - network_hostname: defraawa
+      - network_hostname: defraawb
 ```
 
 They must be treated as complete hostname components.
@@ -1021,21 +1060,16 @@ Panorama is a special case because its naming convention is different from the n
 The required format is:
 
 ```text
-{co}-mgmt-{az1_m_region}-1-panorama.infra.{domain}
+{co}-mgmt-{region}-1-panorama.infra.{domain}
 ```
 
-and:
-
-```text
-{co}-mgmt-{az2_m_region}-1-panorama.infra.{domain}
-```
+Generated for each management AZ via a Jinja2 loop.
 
 For the current values:
 
 ```yaml
 co: de
-az1_m_region: fra11
-az2_m_region: fra11
+region: fra11
 domain: nzero.dev
 ```
 
@@ -1048,7 +1082,7 @@ de-mgmt-fra11-1-panorama.infra.nzero.dev
 The template should not attempt to build Panorama names from:
 
 ```text
-az1_mgmt_network_hostname
+network_hostname
 ```
 
 because Panorama has its own naming convention.
@@ -1201,21 +1235,36 @@ The current Infra Dev example uses:
 environment: idev
 domain: nzero.dev
 co: de
+product: Infra
+env_name: Dev
 
-az1_mgmt_network_hostname: defraama
-az2_mgmt_network_hostname: defraamb
-az1_workloads_network_hostname: defraawa
-az2_workloads_network_hostname: defraawb
+networks:
+  - type: management
+    label: Mgmt
+    host_prefix: m
+    jumphost_ids: [3, 4, 11, 12, 13]
+    azs:
+      - number: 1
+        network_hostname: defraama
+        region: fra11
+        compute_qty: 3
+      - number: 2
+        network_hostname: defraamb
+        region: fra11
+        compute_qty: 3
 
-az1_m_region: fra11
-az2_m_region: fra11
-az1_w_region: fra11
-az2_w_region: fra11
-
-az1_m_compute_qty: 3
-az2_m_compute_qty: 3
-az1_w_compute_qty: 0
-az2_w_compute_qty: 0
+  - type: workloads
+    label: Workloads
+    host_prefix: w
+    azs:
+      - number: 1
+        network_hostname: defraawa
+        region: fra11
+        compute_qty: 0
+      - number: 2
+        network_hostname: defraawb
+        region: fra11
+        compute_qty: 0
 ```
 
 The first objective is to validate the generated FQDNs against the infrastructure documentation.

@@ -52,20 +52,12 @@ components:
       - demfra11-z2-b13.infra.nzero.dev
   compute:
     Infra Dev Mgmt AZ1:
-
       - demfra11-z1-a3.infra.nzero.dev
-
       - demfra11-z1-a4.infra.nzero.dev
-
       - demfra11-z1-a5.infra.nzero.dev
-
     Infra Dev Mgmt AZ2:
-
       - demfra11-z2-a3.infra.nzero.dev
-
       - demfra11-z2-a4.infra.nzero.dev
-
       - demfra11-z2-a5.infra.nzero.dev
-
     Infra Dev Workloads AZ1: []
     Infra Dev Workloads AZ2: []
