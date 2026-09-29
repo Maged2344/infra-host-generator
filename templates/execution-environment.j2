@@ -4,7 +4,7 @@ components:
 {% for net in networks %}
 {% for az in net.azs %}
     {{ product }} {{ env_name }} {{ net.label }} AZ{{ az.number }}:
-      - aa{{ az.network_hostname }}0002.infra.{{ domain }}
+      - aa{{ az.network_hostname }}{{ "%04d" % az.network_seq }}.infra.{{ domain }}
 {% endfor %}
 {% endfor %}
 {% if networks | selectattr('type', 'equalto', 'management') | list %}
@@ -22,12 +22,14 @@ components:
     {{ product }} {{ env_name }} {{ net.label }} AZ{{ az.number }}:
 {% if net.type == 'management' %}
       gridmasters:
-        - im{{ az.network_hostname }}0001.infra.{{ domain }}
-        - im{{ az.network_hostname }}0002.infra.{{ domain }}
+{% for i in range(1, 1 + az.gridmaster_qty) %}
+        - im{{ az.network_hostname }}{{ "%04d" % i }}.infra.{{ domain }}
+{% endfor %}
 {% endif %}
       resolvers:
-        - ir{{ az.network_hostname }}0001.infra.{{ domain }}
-        - ir{{ az.network_hostname }}0002.infra.{{ domain }}
+{% for i in range(1, 1 + az.resolver_qty) %}
+        - ir{{ az.network_hostname }}{{ "%04d" % i }}.infra.{{ domain }}
+{% endfor %}
 {% endfor %}
 {% endfor %}
 {% set ns = namespace(has_jumphosts=false) %}

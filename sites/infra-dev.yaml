@@ -14,10 +14,16 @@ networks:
         network_hostname: defraama
         region: fra11
         compute_qty: 3
+        network_seq: 2
+        gridmaster_qty: 2
+        resolver_qty: 2
       - number: 2
         network_hostname: defraamb
         region: fra11
         compute_qty: 3
+        network_seq: 2
+        gridmaster_qty: 2
+        resolver_qty: 2
 
   - type: workloads
     label: Workloads
@@ -27,7 +33,11 @@ networks:
         network_hostname: defraawa
         region: fra11
         compute_qty: 0
+        network_seq: 2
+        resolver_qty: 2
       - number: 2
         network_hostname: defraawb
         region: fra11
         compute_qty: 0
+        network_seq: 2
+        resolver_qty: 2
