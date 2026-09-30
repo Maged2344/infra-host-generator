@@ -1,109 +1,164 @@
-# Infra Host Documentation Generator
+# Infra Host Generator — Summary
 
-## 1. Overview
+## Overview
 
-This project provides a modular way to generate Infrastructure Host Documentation from a reusable Jinja2 template and site-specific YAML values.
-
-The main goal is to replace a manually maintained Confluence host documentation page with a reusable, automated structure.
-
-The project separates the work into four main areas:
-
-1. **Site configuration** — contains values specific to a site/environment.
-2. **Jinja2 template** — defines the hostname/FQDN generation rules.
-3. **Python modules** — render and process the generated data.
-4. **Generated YAML files** — provide a full validation file and separate files per Availability Zone.
-
-The intended workflow is:
+Generates infrastructure host FQDN documentation from a reusable Jinja2
+template + a site-specific YAML file.
 
 ```text
-sites/<site>.yaml
-    |
-    v
-execution-environment.j2
-    |
-    v
-infratest-components.yaml
-    |
-    v
-AZ splitting
-    |
-    +--> de_mgmt_fra11-1.yaml
-    +--> de_mgmt_fra11-2.yaml
-    +--> de_workloads_fra11-1.yaml
-    +--> de_workloads_fra11-2.yaml
-```
-
-The current stage is intentionally focused on **FQDN validation**. The generated validation file contains FQDNs only so that hostname conventions can be checked against the infrastructure documentation before expanding the template to all other host metadata.
-
----
-
-# 2. Project Structure
-
-```text
-infra_host_generator/
-│
-├── templates/
-│   └── execution-environment.j2
-│
-├── sites/
-│   ├── infra-dev.yaml
-│   └── ...
-│
-├── render.py
-├── split.py
-├── generate.py
-│
-├── README.md
-│
-└── generated/
-    ├── infratest-components.yaml
-    ├── de_mgmt_fra11-1.yaml
-    ├── de_mgmt_fra11-2.yaml
-    ├── de_workloads_fra11-1.yaml
-    └── de_workloads_fra11-2.yaml
+sites/<site>.yaml  -->  render.py  -->  templates/execution-environment.j2
+                                              |
+                                              v
+                              generated/infratest-components.yaml   (big file)
+                                              |
+                                              v
+                                        split.py
+                                              |
+                    +-------------------------+-------------------------+
+                    v                                                   v
+          generated/<AZ name>.yaml  (one small file per AZ)
 ```
 
 ---
 
-# 3. `sites/` directory
+## 1. How to make the big file from the template
 
-## Purpose
+The "big file" is `generated/infratest-components.yaml`. It is produced by
+rendering the Jinja2 template with a site YAML.
 
-The `sites/` directory contains **site-specific configuration files**, one per
-site/environment.
+### Steps
 
-Each file is a self-contained YAML file with the values for that site.  There is
-no single root-level `site.yaml`; the site is selected when running the generator.
+1. The template `templates/execution-environment.j2` defines FQDN naming
+   rules using Jinja2 loops over a `networks` list.
+2. A site YAML (e.g. `sites/infra-dev.yaml`) supplies the values.
+3. `generate.py` is the entry point:
 
-The template should not contain values that change from one site to another when
-those values can be supplied through a site YAML file.
+```bash
+python generate.py --site sites/infra-dev.yaml
+```
 
-The current example file is `sites/infra-dev.yaml`, which represents the Infra Dev
-environment.
+4. `generate.py` calls `render.render(args.site)` which:
+   - loads the YAML (`load_site`)
+   - validates required fields (`_validate_networks`)
+   - creates a Jinja2 `Environment` with `FileSystemLoader` pointing at
+     `templates/`
+   - renders `execution-environment.j2` with the site values
+5. The rendered text is written to `generated/infratest-components.yaml`.
 
-## Current configuration
+### What the big file contains
+
+The big file has a top-level `components:` key with these sections:
+
+| Section | Contents | Scope |
+|---------|----------|-------|
+| `network` | Network controller FQDNs (`aa...`) | All networks / AZs |
+| `security` | Panorama FQDNs | Management networks only |
+| `dns_ntp` | Gridmasters (`im...`) + resolvers (`ir...`) | All AZs; gridmasters mgmt-only |
+| `jumphosts` | Jumphost FQDNs (`...-b<N>`) | Management networks with `jumphost_ids` |
+| `compute` | Compute host FQDNs (`...-a<N>`) | All networks / AZs |
+
+Each AZ is a key like `Infra Dev Mgmt AZ1`.
+
+---
+
+## 2. How to split the big file into small files
+
+After the big file is generated, `generate.py` calls
+`split.split_by_az(...)` to produce one YAML file per AZ.
+
+### Steps
+
+1. `split_by_az` reads `generated/infratest-components.yaml`.
+2. It extracts AZ names from the `components.network` section keys (e.g.
+   `Infra Dev Mgmt AZ1`, `Infra Dev Workloads AZ2`).
+3. For each AZ name it builds a new dict containing only that AZ's data
+   from every section where it appears.
+4. It writes each to `generated/<AZ name>.yaml`.
+
+```text
+generated/infratest-components.yaml
+    |
+    +--> generated/Infra Dev Mgmt AZ1.yaml
+    +--> generated/Infra Dev Mgmt AZ2.yaml
+    +--> generated/Infra Dev Workloads AZ1.yaml
+    +--> generated/Infra Dev Workloads AZ2.yaml
+```
+
+Each small file has the same `components:` structure but only the entries
+for that single AZ. Sections where the AZ does not appear (e.g.
+`security` for a workloads AZ) are simply omitted.
+
+### Example small file (`Infra Dev Mgmt AZ1.yaml`)
 
 ```yaml
-environment: idev
-domain: nzero.dev
-co: de
-product: Infra
-env_name: Dev
+components:
+  network:
+  - aadefraama0002.infra.nzero.dev
+  security:
+  - de-mgmt-fra11-1-panorama.infra.nzero.dev
+  dns_ntp:
+    gridmasters:
+    - imdefraama0001.infra.nzero.dev
+    - imdefraama0002.infra.nzero.dev
+    resolvers:
+    - irdefraama0001.infra.nzero.dev
+    - irdefraama0002.infra.nzero.dev
+  jumphosts:
+  - demfra11-z1-b3.infra.nzero.dev
+  - demfra11-z1-b4.infra.nzero.dev
+  - demfra11-z1-b11.infra.nzero.dev
+  - demfra11-z1-b12.infra.nzero.dev
+  - demfra11-z1-b13.infra.nzero.dev
+  compute:
+  - demfra11-z1-a3.infra.nzero.dev
+  - demfra11-z1-a4.infra.nzero.dev
+  - demfra11-z1-a5.infra.nzero.dev
+```
 
+The split logic is fully dynamic — it reads AZ names from the generated
+data, so adding AZs in the site YAML automatically produces more split
+files with no code change.
+
+---
+
+## 3. How to use the YAML file in `sites/`
+
+Each file under `sites/` is a self-contained site/environment
+configuration. You pick which one to use via the `--site` flag:
+
+```bash
+python generate.py --site sites/infra-dev.yaml
+```
+
+### Structure
+
+```yaml
+# Root-level (required)
+environment: idev          # environment identifier
+domain: nzero.dev          # DNS domain for FQDNs
+co: de                     # company / country prefix
+product: Infra             # product name (used in AZ keys)
+env_name: Dev              # environment name (used in AZ keys)
+
+# networks list (required) — one entry per network type
 networks:
-  - type: management
-    label: Mgmt
-    host_prefix: m
-    jumphost_ids: [3, 4, 11, 12, 13]
+  - type: management        # management | workloads
+    label: Mgmt             # appears in AZ keys: "Infra Dev Mgmt AZ1"
+    host_prefix: m          # m / w letter in compute & jumphost FQDNs
+    jumphost_ids: [3, 4, 11, 12, 13]   # optional, mgmt-only
     azs:
-      - number: 1
-        network_hostname: defraama
-        region: fra11
-        compute_qty: 3
+      - number: 1                       # AZ number -> z1 suffix, AZ1 label
+        network_hostname: defraama      # full hostname component (do NOT shorten)
+        region: fra11                   # region string
+        compute_qty: 3                  # optional, default 0 -> []
+        network_seq: 2                  # optional, sequence for network FQDN
+        gridmaster_qty: 2               # optional, mgmt-only, gridmaster count
+        resolver_qty: 2                 # optional, resolver count
       - number: 2
         network_hostname: defraamb
         region: fra11
         compute_qty: 3
+        ...
 
   - type: workloads
     label: Workloads
@@ -113,1160 +168,147 @@ networks:
         network_hostname: defraawa
         region: fra11
         compute_qty: 0
+        network_seq: 2
+        resolver_qty: 2
       - number: 2
-        network_hostname: defraawb
-        region: fra11
-        compute_qty: 0
+        ...
 ```
 
-## Meaning of the main variables
+### Field reference
 
-### Environment
+**Root-level (required):** `environment`, `domain`, `co`, `product`,
+`env_name`, `networks`
 
-```yaml
-environment: idev
+**Network-level (required):** `type`, `label`, `host_prefix`, `azs`
+
+**Network-level (optional):** `jumphost_ids` (mgmt-only; if missing or
+empty, `jumphosts` section is omitted entirely)
+
+**AZ-level (required):** `number`, `network_hostname`, `region`
+
+**AZ-level (optional):**
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `compute_qty` | `0` | Number of compute FQDNs; `0` produces `[]` |
+| `network_seq` | — | Sequence number for network controller FQDN (`aa...000N`) |
+| `gridmaster_qty` | — | Number of gridmaster FQDNs (management only) |
+| `resolver_qty` | — | Number of resolver FQDNs |
+
+### Adding a new site
+
+1. Create `sites/<new-site>.yaml` (copy from `infra-dev.yaml`).
+2. Fill in the values for the new site/environment.
+3. Run:
+
+```bash
+python generate.py --site sites/<new-site>.yaml
 ```
 
-Defines the environment being generated.
+The same template is reused — no template change needed unless the
+hostname convention itself changes.
 
-### Domain
+### Adding an AZ
 
-```yaml
-domain: nzero.dev
-```
-
-Defines the DNS domain used when constructing FQDNs.
-
-### Company/Country prefix
-
-```yaml
-co: de
-```
-
-Used by hostname conventions that require the `co` value.
-
-### Networks structure
-
-The site YAML uses a generic `networks` list. Each entry defines a network
-type and its availability zones. The Jinja2 template iterates over this
-list, so adding an AZ or a network type requires only a YAML change.
-
-### Management network hostname prefixes
-
-```yaml
-networks:
-  - type: management
-    azs:
-      - number: 1
-        network_hostname: defraama
-      - number: 2
-        network_hostname: defraamb
-```
-
-These are the complete network hostname values.
-
-They must not be shortened.
-
-For example:
-
-```text
-defraama
-```
-
-is correct.
-
-```text
-defraa
-```
-
-is incorrect.
-
-The missing `ma` changes the resulting hostnames.
-
-### Workloads network hostname prefixes
-
-```yaml
-networks:
-  - type: workloads
-    azs:
-      - number: 1
-        network_hostname: defraawa
-      - number: 2
-        network_hostname: defraawb
-```
-
-These are also complete values and should be used exactly as provided.
-
-### Regions
-
-```yaml
-azs:
-  - number: 1
-    region: fra11
-  - number: 2
-    region: fra11
-```
-
-These are used by hostname conventions that include the region.
-
-### Compute quantities
-
-```yaml
-azs:
-  - number: 1
-    compute_qty: 3
-  - number: 2
-    compute_qty: 0
-```
-
-These control how many compute FQDNs are generated for each section.
-
-For example:
-
-```yaml
-compute_qty: 3
-```
-
-generates:
-
-```text
-demfra11-z1-a3.infra.nzero.dev
-demfra11-z1-a4.infra.nzero.dev
-demfra11-z1-a5.infra.nzero.dev
-```
-
-If the quantity is zero, no hosts are generated for that section (`[]`).
+Add a new entry to the `azs` list under the relevant network. No code or
+template change is needed — the Jinja2 loops iterate over all AZs.
 
 ---
 
-# 4. `templates/execution-environment.j2`
+## 4. Functions used
 
-## Purpose
-
-This is the main reusable **Jinja2 template**.
-
-It contains the hostname/FQDN construction rules.
-
-The template receives values from a site YAML file (e.g. `sites/infra-dev.yaml`).
-
-For example:
-
-```jinja2
-aa{{ az.network_hostname }}0002.infra.{{ domain }}
-```
-
-with:
-
-```yaml
-network_hostname: defraama
-domain: nzero.dev
-```
-
-generates:
-
-```text
-aadefraama0002.infra.nzero.dev
-```
-
-The important point is that the template uses:
-
-```text
-defraama
-```
-
-exactly as supplied.
-
----
-
-# 5. Network FQDNs
-
-The template generates network FQDNs for:
-
-```text
-AZ1 Management
-AZ2 Management
-AZ1 Workloads
-AZ2 Workloads
-```
-
-Example:
-
-```jinja2
-aa{{ az.network_hostname }}0002.infra.{{ domain }}
-```
-
-produces:
-
-```text
-aadefraama0002.infra.nzero.dev
-```
-
-The same pattern is applied via loops for all Availability Zones and network
-types defined in the site YAML.
-
----
-
-# 6. Panorama FQDNs
-
-The Panorama appliances use a specific naming convention.
-
-The corrected format is:
-
-```text
-{co}-mgmt-{region}-1-panorama.infra.{domain}
-```
-
-The Jinja2 template therefore uses:
-
-```jinja2
-{{ co }}-mgmt-{{ az.region }}-1-panorama.infra.{{ domain }}
-```
-
-This is generated for each management AZ via a loop.
-
-For the current Infra Dev values this results in:
-
-```text
-de-mgmt-fra11-1-panorama.infra.nzero.dev
-```
-
-The Panorama naming convention is intentionally separate from the network hostname variables.
-
----
-
-# 7. DNS and NTP FQDNs
-
-The template generates FQDNs for:
-
-- Gridmaster servers
-- Management DNS/NTP resolvers
-- Workloads DNS/NTP resolvers
-
-Examples:
-
-```jinja2
-im{{ az.network_hostname }}0001.infra.{{ domain }}
-```
-
-generates:
-
-```text
-imdefraama0001.infra.nzero.dev
-```
-
-and:
-
-```jinja2
-ir{{ az.network_hostname }}0001.infra.{{ domain }}
-```
-
-generates:
-
-```text
-irdefraama0001.infra.nzero.dev
-```
-
-The same approach is used for all management and workloads AZs via loops.
-Gridmasters are generated for management AZs only; workloads AZs get
-resolvers only.
-
----
-
-# 8. Jumphost FQDNs
-
-The template generates the management jumphost FQDNs for AZ1 and AZ2.
-
-Examples for AZ1:
-
-```text
-demfra11-z1-b3.infra.nzero.dev
-demfra11-z1-b4.infra.nzero.dev
-demfra11-z1-b11.infra.nzero.dev
-demfra11-z1-b12.infra.nzero.dev
-demfra11-z1-b13.infra.nzero.dev
-```
-
-Examples for AZ2:
-
-```text
-demfra11-z2-b3.infra.nzero.dev
-demfra11-z2-b4.infra.nzero.dev
-demfra11-z2-b11.infra.nzero.dev
-demfra11-z2-b12.infra.nzero.dev
-demfra11-z2-b13.infra.nzero.dev
-```
-
-These values are generated from the corresponding region variables.
-
----
-
-# 9. Compute FQDNs
-
-The template supports generating compute host FQDNs using Jinja2 loops.
-
-Example:
-
-```jinja2
-{% for i in range(3, 3 + az.compute_qty) %}
-  - {{ co }}{{ net.host_prefix }}{{ az.region }}-z{{ az.number }}-a{{ i }}.infra.{{ domain }}
-{% endfor %}
-```
-
-With:
-
-```yaml
-compute_qty: 3
-```
-
-the result is:
-
-```text
-demfra11-z1-a3.infra.nzero.dev
-demfra11-z1-a4.infra.nzero.dev
-demfra11-z1-a5.infra.nzero.dev
-```
-
-This makes the number of generated hosts configurable without changing the template.
-
----
-
-# 10. Storage FQDNs
-
-The template also contains FQDN patterns for storage/NetApp components.
-
-The storage sections are separated into:
-
-```text
-AZ1 Management
-AZ2 Management
-AZ1 Workloads
-AZ2 Workloads
-```
-
-The generated storage names include the relevant cluster, node, OOB, and intercluster naming patterns.
-
-Examples include:
-
-```text
--oob1
--oob2
--n1
--n2
--ic1
--ic2
-```
-
-The storage naming logic is kept in the template so that it can be reused for another site.
-
----
-
-# 11. `render.py`
-
-## Purpose
-
-`render.py` is the reusable Python module responsible for rendering the Jinja2 template.
-
-It separates the rendering logic from the command-line entry point.
-
-The module contains:
+### `generate.py` — entry point
 
 ```python
-load_site()
+parser.add_argument("--site", required=True, ...)
 ```
 
-and:
+- Parses `--site` CLI argument.
+- Creates `generated/` directory.
+- Calls `render(args.site)` and writes result to
+  `generated/infratest-components.yaml`.
+- Calls `split_by_az(source=..., output_dir=...)` to produce per-AZ
+  files.
 
-```python
-render()
-```
+### `render.py` — template rendering module
 
----
+| Function | Purpose |
+|----------|---------|
+| `load_site(path)` | Reads a site YAML file with `yaml.safe_load` and returns it as a dict. Raises `ValueError` if the YAML root is not a mapping. |
+| `_validate_networks(site, site_path)` | Validates that `networks` is a list of dicts, each with required fields (`type`, `label`, `host_prefix`, `azs`), and each AZ has required fields (`number`, `network_hostname`, `region`). Raises `ValueError` on missing fields. |
+| `render(site_path)` | Loads the site YAML, validates required root-level fields (`environment`, `domain`, `co`, `product`, `env_name`, `networks`) and networks, creates a Jinja2 `Environment` (`trim_blocks=True`, `lstrip_blocks=True`) with `FileSystemLoader` on `templates/`, renders `execution-environment.j2`, and returns the rendered text. |
 
-## `load_site()`
-
-This function reads a site YAML configuration file.
-
-Conceptually:
-
-```text
-sites/<site>.yaml
-    |
-    v
-Python dictionary
-```
-
-The resulting dictionary is then passed to the Jinja2 template.
-
----
-
-## `render()`
-
-The `render()` function:
-
-1. Loads the site YAML file
-2. Creates a Jinja2 environment
-3. Loads `execution-environment.j2`
-4. Passes the site values into the template
-5. Returns the rendered YAML content
-
-Conceptually:
-
-```text
-sites/<site>.yaml
-    |
-    v
-render.py
-    |
-    v
-execution-environment.j2
-    |
-    v
-Rendered YAML
-```
-
-Because this is implemented as a Python module, another Python application can import and reuse it.
-
-Example:
+Can be imported and reused directly:
 
 ```python
 from render import render
 
 yaml_content = render("sites/infra-dev.yaml")
+```
 
-print(yaml_content)
+### `split.py` — AZ splitting module
+
+| Function | Purpose |
+|----------|---------|
+| `split_by_az(source="generated/infratest-components.yaml", output_dir="generated")` | Reads the big YAML file, extracts AZ names from `components.network` keys, and for each AZ writes a `<AZ name>.yaml` file containing only that AZ's entries from every section where it appears. Returns the full parsed data. |
+
+Can be imported and reused directly:
+
+```python
+from split import split_by_az
+
+split_by_az(source="generated/infratest-components.yaml", output_dir="generated")
 ```
 
 ---
 
-# 12. `split.py`
+## 5. FQDN naming conventions
 
-## Purpose
+All FQDNs end with `.infra.<domain>`.
 
-`split.py` is the reusable Python module for processing the generated documentation by Availability Zone.
+| Component | Pattern | Example |
+|-----------|---------|---------|
+| Network controller | `aa<network_hostname><NNNN>` | `aadefraama0002.infra.nzero.dev` |
+| Panorama (security) | `<co>-mgmt-<region>-1-panorama` | `de-mgmt-fra11-1-panorama.infra.nzero.dev` |
+| Gridmaster (dns_ntp) | `im<network_hostname><NNNN>` | `imdefraama0001.infra.nzero.dev` |
+| Resolver (dns_ntp) | `ir<network_hostname><NNNN>` | `irdefraama0001.infra.nzero.dev` |
+| Jumphost | `<co><host_prefix><region>-z<N>-b<id>` | `demfra11-z1-b3.infra.nzero.dev` |
+| Compute | `<co><host_prefix><region>-z<N>-a<id>` | `demfra11-z1-a3.infra.nzero.dev` |
 
-The intended responsibility of this module is to take:
-
-```text
-generated/infratest-components.yaml
-```
-
-and split the relevant FQDNs into:
-
-```text
-de_mgmt_fra11-1.yaml
-de_mgmt_fra11-2.yaml
-de_workloads_fra11-1.yaml
-de_workloads_fra11-2.yaml
-```
-
-The important architectural decision is that the splitting logic is separate from the Jinja2 rendering logic.
-
-This means:
-
-```text
-Rendering
-```
-
-and:
-
-```text
-AZ processing
-```
-
-can evolve independently.
-
-The module can also be reused by other Python programs later.
+Key rules:
+- `network_hostname` is used exactly as supplied (never shortened).
+- Panorama uses `region` (not `network_hostname`).
+- Compute IDs start at 3: `range(3, 3 + compute_qty)`.
+- `z<N>` suffix and `AZ<N>` label are derived from `az.number`.
+- `m`/`w` host prefix is derived from `net.host_prefix`.
 
 ---
 
-# 13. `generate.py`
-
-## Purpose
-
-`generate.py` is the main entry point.
-
-Instead of manually importing the rendering module, the user can run:
-
-```bash
-python generate.py --site sites/infra-dev.yaml
-```
-
-The script:
-
-1. Loads the site configuration from the file given via `--site`.
-2. Renders the Jinja2 template.
-3. Writes the generated validation YAML.
-
-The output is:
-
-```text
-generated/infratest-components.yaml
-```
-
-The intended overall workflow is:
-
-```text
-python generate.py --site sites/infra-dev.yaml
-        |
-        v
-sites/infra-dev.yaml
-        |
-        v
-execution-environment.j2
-        |
-        v
-infratest-components.yaml
-```
-
----
-
-# 14. `generated/infratest-components.yaml`
-
-## Purpose
-
-This is the main generated validation file.
-
-It contains the FQDNs generated for the Infra Dev example.
-
-The file is intentionally **FQDN-only**.
-
-It is intended to be used to validate the Jinja2 naming logic against the infrastructure documentation before expanding the project to generate all host metadata.
-
-The file contains sections such as:
-
-```text
-network
-security
-dns_ntp
-jumphosts
-compute
-```
-
-Example:
-
-```yaml
-components:
-  network:
-    de_mgmt_fra11-1:
-      - aadefraama0002.infra.nzero.dev
-```
-
----
-
-# 15. `generated/de_mgmt_fra11-1.yaml`
-
-This file contains the generated FQDNs belonging to:
-
-```text
-Management AZ1
-```
-
-The expected categories include:
-
-```text
-Network
-Security / Panorama
-DNS / NTP
-Jumphosts
-Compute
-Storage
-```
-
-The file is useful when someone only needs the AZ1 management infrastructure.
-
----
-
-# 16. `generated/de_mgmt_fra11-2.yaml`
-
-This file contains the generated FQDNs belonging to:
-
-```text
-Management AZ2
-```
-
-It follows the same concept as `de_mgmt_fra11-1.yaml`.
-
-Expected categories include:
-
-```text
-Network
-Security / Panorama
-DNS / NTP
-Jumphosts
-Compute
-Storage
-```
-
----
-
-# 17. `generated/de_workloads_fra11-1.yaml`
-
-This file contains the FQDNs belonging to:
-
-```text
-Workloads AZ1
-```
-
-Expected categories include:
-
-```text
-Network
-DNS / NTP
-Compute
-Storage
-```
-
-For the current Infra Dev configuration:
-
-```yaml
-compute_qty: 0
-```
-
-there are currently no workload compute FQDNs generated for this section.
-
----
-
-# 18. `generated/de_workloads_fra11-2.yaml`
-
-This file contains the FQDNs belonging to:
-
-```text
-Workloads AZ2
-```
-
-Expected categories include:
-
-```text
-Network
-DNS / NTP
-Compute
-Storage
-```
-
-For the current Infra Dev configuration:
-
-```yaml
-compute_qty: 0
-```
-
-there are currently no workload compute FQDNs generated for this section.
-
----
-
-# 19. Complete Data Flow
-
-The complete architecture is:
-
-```text
-                    sites/<site>.yaml
-                        |
-                        |
-                        v
-              +----------------+
-              |    render.py   |
-              +----------------+
-                       |
-                       v
-        execution-environment.j2
-                       |
-                       |
-                       v
-          infratest-components.yaml
-                       |
-                       |
-                       v
-                +------------+
-                |  split.py  |
-                +------------+
-                       |
-       +---------------+---------------+
-       |               |               |
-       v               v               v
- de_mgmt_fra11-1.yaml   de_mgmt_fra11-2.yaml   workload files
-                                       |
-                              +--------+--------+
-                              |                 |
-                              v                 v
-                       de_workloads_fra11-1.yaml   de_workloads_fra11-2.yaml
-```
-
----
-
-# 20. Why the Project Is Modular
-
-The project intentionally separates data, templates, and processing logic.
-
-## Site data
-
-```text
-sites/<site>.yaml
-```
-
-Contains site-specific values.
-
-## Hostname/FQDN rules
-
-```text
-templates/execution-environment.j2
-```
-
-Contains reusable naming rules.
-
-## Rendering logic
-
-```text
-render.py
-```
-
-Contains reusable Jinja2 rendering functions.
-
-## AZ processing
-
-```text
-split.py
-```
-
-Contains reusable AZ splitting/processing functionality.
-
-## Entry point
-
-```text
-generate.py
-```
-
-Provides the simple command used to generate the documentation.
-
-This allows the Python modules to be imported and reused by other tools in the future.
-
----
-
-# 21. Changing the Site
-
-For another site/environment, create a new YAML file under `sites/`:
-
-```text
-sites/infra-prod.yaml
-```
-
-For example:
-
-```yaml
-environment: production
-domain: infra.example.com
-co: xx
-product: Infra
-env_name: Prod
-
-networks:
-  - type: management
-    label: Mgmt
-    host_prefix: m
-    jumphost_ids: [3, 4, 11, 12, 13]
-    azs:
-      - number: 1
-        network_hostname: ...
-        region: ...
-        compute_qty: ...
-      - number: 2
-        network_hostname: ...
-        region: ...
-        compute_qty: ...
-
-  - type: workloads
-    label: Workloads
-    host_prefix: w
-    azs:
-      - number: 1
-        network_hostname: ...
-        region: ...
-        compute_qty: ...
-      - number: 2
-        network_hostname: ...
-        region: ...
-        compute_qty: ...
-```
-
-Then run the generator with the new site file:
-
-```bash
-python generate.py --site sites/infra-prod.yaml
-```
-
-The same Jinja2 template can then be reused.
-
-The template should only need to be modified if the actual infrastructure hostname convention changes.
-
----
-
-# 22. Installation
-
-The project requires Python and the following packages:
+## 6. Installation & run
 
 ```bash
 pip install Jinja2 PyYAML
-```
-
-Or:
-
-```bash
-python -m pip install Jinja2 PyYAML
-```
-
----
-
-# 23. Running the Generator
-
-From the project root:
-
-```bash
 python generate.py --site sites/infra-dev.yaml
 ```
 
-The main output is:
-
-```text
-generated/infratest-components.yaml
-```
-
-The AZ-specific files are stored under:
-
-```text
-generated/
-```
+Output:
+- `generated/infratest-components.yaml` — big validation file (all AZs).
+- `generated/<AZ name>.yaml` — one small file per AZ.
 
 ---
 
-# 24. Using the Renderer Directly
+## 7. Tests
 
-The Python renderer can be used independently.
-
-Example:
-
-```python
-from render import render
-
-result = render("sites/infra-dev.yaml")
-
-print(result)
+```bash
+python -m pytest tests/test_generator.py -v
 ```
 
-This makes the rendering functionality reusable from:
+or:
 
-- Other Python scripts
-- Automation tools
-- CI/CD pipelines
-- Future infrastructure documentation tools
-
----
-
-# 25. Validation Workflow
-
-The current implementation should be considered the **FQDN validation phase**.
-
-The recommended workflow is:
-
-```text
-1. Define sites/<site>.yaml
-       |
-       v
-2. Render execution-environment.j2
-       |
-       v
-3. Generate infratest-components.yaml
-       |
-       v
-4. Compare generated FQDNs against the source documentation
-       |
-       v
-5. Fix hostname rules if required
-       |
-       v
-6. Split the validated data into AZ files
-       |
-       v
-7. Expand the template to include additional host metadata
+```bash
+python tests/test_generator.py
 ```
 
-This approach avoids generating a large amount of infrastructure data before the hostname conventions have been confirmed.
-
----
-
-# 26. FQDN-Only Scope
-
-The current generated validation file intentionally focuses on FQDNs.
-
-It does not attempt to generate all infrastructure attributes.
-
-The current validation scope does not include:
-
-```text
-IP addresses
-Gateway addresses
-Certificate expiry dates
-Credentials
-Operational state
-Hardware specifications
-Other non-FQDN metadata
-```
-
-These can be added later after the hostname conventions are validated.
-
----
-
-# 27. Important Naming Rules
-
-The following values are especially important:
-
-```yaml
-networks:
-  - type: management
-    azs:
-      - network_hostname: defraama
-      - network_hostname: defraamb
-  - type: workloads
-    azs:
-      - network_hostname: defraawa
-      - network_hostname: defraawb
-```
-
-They must be treated as complete hostname components.
-
-For example:
-
-```text
-defraama
-```
-
-must remain:
-
-```text
-defraama
-```
-
-and must not be changed to:
-
-```text
-defraa
-```
-
-The missing characters would cause the generated hostnames to be incorrect.
-
----
-
-# 28. Panorama Naming Rule
-
-Panorama is a special case because its naming convention is different from the network controller naming convention.
-
-The required format is:
-
-```text
-{co}-mgmt-{region}-1-panorama.infra.{domain}
-```
-
-Generated for each management AZ via a Jinja2 loop.
-
-For the current values:
-
-```yaml
-co: de
-region: fra11
-domain: nzero.dev
-```
-
-the generated FQDN is:
-
-```text
-de-mgmt-fra11-1-panorama.infra.nzero.dev
-```
-
-The template should not attempt to build Panorama names from:
-
-```text
-network_hostname
-```
-
-because Panorama has its own naming convention.
-
----
-
-# 29. Design Principles
-
-The project follows these principles.
-
-## Reusability
-
-The same Jinja2 template can be reused for different sites.
-
-## Separation of data and logic
-
-Site-specific values belong in:
-
-```text
-sites/<site>.yaml
-```
-
-Naming logic belongs in:
-
-```text
-execution-environment.j2
-```
-
-Processing logic belongs in:
-
-```text
-*.py
-```
-
-## Modularity
-
-Rendering and AZ processing are separate modules.
-
-## Validation before expansion
-
-FQDNs are validated first before generating the full infrastructure documentation.
-
-## Easy maintenance
-
-If a site-specific value changes:
-
-```text
-Update sites/<site>.yaml
-```
-
-If a hostname convention changes:
-
-```text
-Update execution-environment.j2
-```
-
-If the processing workflow changes:
-
-```text
-Update the relevant Python module
-```
-
----
-
-# 30. Future Expansion
-
-Once the FQDN generation is validated, the project can be extended to generate additional infrastructure information.
-
-For example:
-
-```text
-Hostname
-FQDN
-IP address
-Gateway
-Interface
-VLAN
-VRF
-Description
-Certificate expiry
-Management network
-Storage network
-VMware/vMotion network
-OOB information
-Service information
-```
-
-The same architecture can be retained:
-
-```text
-sites/<site>.yaml
-      +
-execution-environment.j2
-      |
-      v
-Python rendering
-      |
-      v
-Full host documentation
-      |
-      v
-AZ-specific files
-```
-
-This means the current FQDN validation work becomes the foundation for the complete documentation generator.
-
----
-
-# 31. Summary
-
-This project replaces a manually maintained infrastructure documentation workflow with a reusable and modular generator.
-
-The important separation is:
-
-```text
-SITE VALUES
-    |
-    v
-sites/<site>.yaml
-    |
-    v
-HOSTNAME RULES
-    |
-    v
-execution-environment.j2
-    |
-    v
-PYTHON RENDERING
-    |
-    v
-infratest-components.yaml
-    |
-    v
-AZ PROCESSING
-    |
-    +-------------------+
-    |                   |
-    v                   v
-Management            Workloads
-    |                   |
-    +-------+-----------+
-            |
-            v
-    AZ-specific YAML files
-```
-
-The current Infra Dev example uses:
-
-```yaml
-environment: idev
-domain: nzero.dev
-co: de
-product: Infra
-env_name: Dev
-
-networks:
-  - type: management
-    label: Mgmt
-    host_prefix: m
-    jumphost_ids: [3, 4, 11, 12, 13]
-    azs:
-      - number: 1
-        network_hostname: defraama
-        region: fra11
-        compute_qty: 3
-      - number: 2
-        network_hostname: defraamb
-        region: fra11
-        compute_qty: 3
-
-  - type: workloads
-    label: Workloads
-    host_prefix: w
-    azs:
-      - number: 1
-        network_hostname: defraawa
-        region: fra11
-        compute_qty: 0
-      - number: 2
-        network_hostname: defraawb
-        region: fra11
-        compute_qty: 0
-```
-
-The first objective is to validate the generated FQDNs against the infrastructure documentation.
-
-After validation, the same modular framework can be expanded to generate the complete Infrastructure Host Documentation.
+The test suite covers baseline generation, adding AZs, different regions,
+compute quantities, missing optional fields, validation errors, split
+output, and template genericness (no hardcoded AZ1/AZ2).
